@@ -10,11 +10,7 @@ import {IEbtcBSM} from "./Dependencies/IEbtcBSM.sol";
 import {IMintingConstraint} from "./Dependencies/IMintingConstraint.sol";
 import {IEscrow} from "./Dependencies/IEscrow.sol";
 
-/**
-* @title eBTC Stability Module (BSM) Contract
-* @notice Facilitates bi-directional exchange between eBTC and other BTC-denominated assets with no slippage.
-* @dev This contract handles the core business logic for asset token operations including minting and redeeming eBTC.
-*/
+
 contract EbtcBSM is IEbtcBSM, Pausable, Initializable, AuthNoOwner {
     using SafeERC20 for IERC20;
 
@@ -60,13 +56,7 @@ contract EbtcBSM is IEbtcBSM, Pausable, Initializable, AuthNoOwner {
     /// @notice Error for when the recipient address is the zero address
     error InvalidRecipientAddress();
 
-    /** @notice Constructs the EbtcBSM contract
-    * @param _assetToken Address of the underlying asset token
-    * @param _oraclePriceConstraint Address of the oracle price constraint
-    * @param _rateLimitingConstraint Address of the rate limiting constraint
-    * @param _ebtcToken Address of the eBTC token
-    * @param _governance Address of the governor
-    */
+  
     constructor(
         address _assetToken,
         address _oraclePriceConstraint,
@@ -87,19 +77,13 @@ contract EbtcBSM is IEbtcBSM, Pausable, Initializable, AuthNoOwner {
         _initializeAuthority(_governance);
     }
 
-    /** @notice This function will be invoked only once within the same transaction as the deployment of
-    * this contract, thereby preventing any other user from executing this function.
-    * @param _escrow Address of the escrow contract
-    */
+   
     function initialize(address _escrow) initializer external {
         require(_escrow != address(0));
         escrow = IEscrow(_escrow);
     }
 
-    /** @notice Calculates the fee for buying eBTC
-    * @param _amount Amount of eBTC to buy
-    * @return Fee amount
-    */
+   
     function _feeToBuy(uint256 _amount) private view returns (uint256) {
         return (_amount * feeToBuyBPS) / BPS;
     }
@@ -129,9 +113,7 @@ contract EbtcBSM is IEbtcBSM, Pausable, Initializable, AuthNoOwner {
         _assetAmountOut = escrow.previewWithdraw(_ebtcAmountIn) - _feeAmount;
     }
 
-    /** @notice This internal function verifies that the escrow has sufficient assets deposited to cover an amount to buy.
-    * @param amountToBuy The amount of assets that is intended to be bought.
-    */
+   
     function _checkTotalAssetsDeposited(uint256 amountToBuy) private view {
         // ebtc to asset price is treated as 1 for buyAsset
         uint256 totalAssetsDeposited = escrow.totalAssetsDeposited();
@@ -139,10 +121,7 @@ contract EbtcBSM is IEbtcBSM, Pausable, Initializable, AuthNoOwner {
             revert InsufficientAssetTokens(amountToBuy, totalAssetsDeposited);
         }
     }
-    
-    /** @notice Internal function to handle the minting constraints checks
-    * @param _amountToMint Amount to be minted
-    */
+   
     function _checkMintingConstraints(uint256 _amountToMint) private view {
         bool success;
         bytes memory errData;
@@ -241,36 +220,21 @@ contract EbtcBSM is IEbtcBSM, Pausable, Initializable, AuthNoOwner {
         emit AssetBought(_ebtcAmountIn, _assetAmountOut, _feeAmount);
     }
 
-    /** 
-     * @notice Calculates the amount of eBTC minted for a given amount of asset tokens accounting
-     * for all minting constraints
-     * @param _assetAmountIn the total amount intended to be deposited
-     * @return _ebtcAmountOut the estimated eBTC to mint after fees
-     */
+   
     function previewSellAsset(
         uint256 _assetAmountIn
     ) external returns (uint256 _ebtcAmountOut) {
         return _previewSellAsset(_assetAmountIn, _feeToSell(_assetAmountIn));
     }
 
-    /** 
-     * @notice Calculates the net asset amount that can be bought with a given amount of eBTC
-     * @param _ebtcAmountIn the total amount intended to be deposited
-     * @return _assetAmountOut the estimated asset to buy after fees
-     */
+    
     function previewBuyAsset(
         uint256 _ebtcAmountIn
     ) external returns (uint256 _assetAmountOut) {
         return _previewBuyAsset(_ebtcAmountIn, _feeToBuy(_ebtcAmountIn));
     }
 
-    /**
-     * @notice Allows users to mint eBTC by depositing asset tokens
-     * @param _assetAmountIn Amount of asset tokens to deposit
-     * @param _recipient custom recipient for the minted eBTC
-     * @param _minOutAmount minimum eBTC expected after slippage
-     * @return _ebtcAmountOut Amount of eBTC tokens minted to the user
-     */
+   
     function sellAsset(
         uint256 _assetAmountIn,
         address _recipient,
@@ -280,13 +244,7 @@ contract EbtcBSM is IEbtcBSM, Pausable, Initializable, AuthNoOwner {
             _sellAsset(_assetAmountIn, _recipient, _feeToSell(_assetAmountIn), _minOutAmount);
     }
 
-    /**
-     * @notice Allows users to buy BSM owned asset tokens by burning their eBTC
-     * @param _ebtcAmountIn Amount of eBTC tokens to burn
-     * @param _recipient custom recipient for the asset
-     * @param _minOutAmount minimum asset tokens expected after slippage
-     * @return _assetAmountOut Amount of asset tokens sent to user
-     */
+   
     function buyAsset(
         uint256 _ebtcAmountIn,
         address _recipient,
@@ -295,14 +253,7 @@ contract EbtcBSM is IEbtcBSM, Pausable, Initializable, AuthNoOwner {
         return _buyAsset(_ebtcAmountIn, _recipient, _feeToBuy(_ebtcAmountIn), _minOutAmount);
     }
 
-    /**
-     * @notice Allows authorized users to mint eBTC by depositing asset tokens without applying a fee
-     * @dev can only be called by authorized users
-     * @param _assetAmountIn Amount of asset tokens to deposit
-     * @param _recipient custom recipient for the minted eBTC
-     * @param _minOutAmount minimum eBTC expected after slippage
-     * @return _ebtcAmountOut Amount of eBTC tokens minted to the user
-     */
+    
     function sellAssetNoFee(
         uint256 _assetAmountIn,
         address _recipient,
@@ -311,14 +262,7 @@ contract EbtcBSM is IEbtcBSM, Pausable, Initializable, AuthNoOwner {
         return _sellAsset(_assetAmountIn, _recipient, 0, _minOutAmount);
     }
 
-    /**
-     * @notice Allows authorized users to buy BSM owned asset tokens by burning their eBTC
-     * @dev Can only be called by authorized users
-     * @param _ebtcAmountIn Amount of eBTC tokens to burn
-     * @param _recipient custom recipient for the asset
-     * @param _minOutAmount minimum asset tokens expected after slippage
-     * @return _assetAmountOut Amount of asset tokens sent to user
-     */
+  
     function buyAssetNoFee(
         uint256 _ebtcAmountIn,
         address _recipient,
@@ -327,50 +271,35 @@ contract EbtcBSM is IEbtcBSM, Pausable, Initializable, AuthNoOwner {
         return _buyAsset(_ebtcAmountIn, _recipient, 0, _minOutAmount);
     }
 
-    /** @notice Sets the fee for selling eBTC
-    * @dev Can only be called by authorized users
-    * @param _feeToSellBPS Fee in basis points
-    */
+   
     function setFeeToSell(uint256 _feeToSellBPS) external requiresAuth {
         require(_feeToSellBPS <= MAX_FEE);
         emit FeeToSellUpdated(feeToSellBPS, _feeToSellBPS);
         feeToSellBPS = _feeToSellBPS;
     }
 
-    /** @notice Sets the fee for buying eBTC
-    * @dev Can only be called by authorized users
-    * @param _feeToBuyBPS Fee in basis points
-    */
+   
     function setFeeToBuy(uint256 _feeToBuyBPS) external requiresAuth {
         require(_feeToBuyBPS <= MAX_FEE);
         emit FeeToBuyUpdated(feeToBuyBPS, _feeToBuyBPS);
         feeToBuyBPS = _feeToBuyBPS;
     }
 
-    /** @notice Updates the rate limiting constraint address
-    * @dev Can only be called by authorized users
-    * @param _newRateLimitingConstraint New address for the rate limiting constraint
-    */
+  
     function setRateLimitingConstraint(address _newRateLimitingConstraint) external requiresAuth {
         require(_newRateLimitingConstraint != address(0), "Invalid address");
         emit IMintingConstraint.MintingConstraintUpdated(address(rateLimitingConstraint), _newRateLimitingConstraint);
         rateLimitingConstraint = IMintingConstraint(_newRateLimitingConstraint);
     }
 
-    /** @notice Updates the oracle price constraint address
-    * @dev Can only be called by authorized users
-    * @param _newOraclePriceConstraint New address for the oracle price constraint
-    */
+  
     function setOraclePriceConstraint(address _newOraclePriceConstraint) external requiresAuth {
         require(_newOraclePriceConstraint != address(0));
         emit IMintingConstraint.MintingConstraintUpdated(address(oraclePriceConstraint), _newOraclePriceConstraint);
         oraclePriceConstraint = IMintingConstraint(_newOraclePriceConstraint);
     }
 
-    /** @notice Updates the escrow address and initiates an escrow migration
-    * @dev Can only be called by authorized users
-    * @param _newEscrow New escrow address
-    */
+   
     function updateEscrow(address _newEscrow) external requiresAuth {
         require(_newEscrow != address(0));
 
@@ -390,14 +319,12 @@ contract EbtcBSM is IEbtcBSM, Pausable, Initializable, AuthNoOwner {
         escrow = IEscrow(_newEscrow);
     }
 
-    /// @notice Pauses the contract operations
-    /// @dev Can only be called by authorized users
+    
     function pause() external requiresAuth {
         _pause();
     }
 
-    /// @notice Unpauses the contract operations
-    /// @dev Can only be called by authorized users
+    
     function unpause() external requiresAuth {
         _unpause();
     }
